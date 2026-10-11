@@ -1,0 +1,27 @@
+# Сторонний сервис генерации картинок (GIF MAKER).
+# Значения берутся из переменных окружения IMAGE_SERVICE_URL, IMAGE_SERVICE_LOGIN,
+# IMAGE_SERVICE_PASSWORD. Для разработки заданы значения по умолчанию.
+# 192.168.33.1 — это Windows (где запущен сервис), как его видит виртуалка с Rails.
+# Читается в config/application.rb через config_for(:image_service).
+#
+# .to_json превращает значение в строку в кавычках: иначе YAML прочитал бы
+# пароль 123 как число, а не как строку "123".
+
+default: &default
+  url: <%= ENV.fetch("IMAGE_SERVICE_URL", "http://192.168.33.1:5555").to_json %>
+  login: <%= ENV["IMAGE_SERVICE_LOGIN"].to_json %>
+  password: <%= ENV["IMAGE_SERVICE_PASSWORD"].to_json %>
+
+development:
+  <<: *default
+  login: <%= ENV.fetch("IMAGE_SERVICE_LOGIN", "alex").to_json %>
+  password: <%= ENV.fetch("IMAGE_SERVICE_PASSWORD", "123").to_json %>
+
+test:
+  <<: *default
+  login: "test"
+  password: "test"
+
+# В продакшене — только из переменных окружения, без паролей в коде
+production:
+  <<: *default

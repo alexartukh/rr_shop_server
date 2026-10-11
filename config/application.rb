@@ -28,5 +28,9 @@ module ShopApi
     # Middleware like session, flash, cookies can be added back manually.
     # Skip views, helpers and assets when generating a new resource.
     config.api_only = true
+
+    # Настройки стороннего сервиса картинок: config/image_service.yml
+    # Доступны как Rails.application.config.x.image_service.url / .login / .password
+    config.x.image_service = config_for(:image_service)
   end
 end

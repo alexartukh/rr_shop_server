@@ -23,6 +23,9 @@ Rails.application.routes.draw do
     namespace :v1 do
       resources :items, only: [:index, :show]
 
+      # Картинки от стороннего сервиса (посредник): /api/v1/image?t=...&template=...
+      get "image", to: "images#show"
+
       # Всё ниже — только для вошедших (токен в заголовке Authorization)
       # GET /api/v1/me — мой профиль, PATCH/PUT /api/v1/me — изменить имя и фамилию
       resource :me, only: [:show, :update], controller: "me"
@@ -31,8 +34,8 @@ Rails.application.routes.draw do
 
       # Админка — только для пользователей с ролью ADMIN
       namespace :admin do
-        resources :items                                   # все 5 действий
-        resources :users, only: [:index, :show, :update]
+        resources :items   # index, show, create, update, destroy
+        resources :users   # index, show, create, update, destroy
       end
     end
   end
