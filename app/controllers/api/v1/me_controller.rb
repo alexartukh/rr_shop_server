@@ -16,7 +16,7 @@ module Api
       def update
         attrs = profile_params
         if attrs.empty?
-          return render json: { errors: ["Nothing to update: send first_name and/or last_name"] },
+          return render json: { errors: [ "Nothing to update: send first_name and/or last_name" ] },
                         status: :unprocessable_content
         end
 

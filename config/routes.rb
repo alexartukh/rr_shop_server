@@ -21,16 +21,16 @@ Rails.application.routes.draw do
 
   namespace :api do
     namespace :v1 do
-      resources :items, only: [:index, :show]
+      resources :items, only: [ :index, :show ]
 
       # Картинки от стороннего сервиса (посредник): /api/v1/image?t=...&template=...
       get "image", to: "images#show"
 
       # Всё ниже — только для вошедших (токен в заголовке Authorization)
       # GET /api/v1/me — мой профиль, PATCH/PUT /api/v1/me — изменить имя и фамилию
-      resource :me, only: [:show, :update], controller: "me"
+      resource :me, only: [ :show, :update ], controller: "me"
       post "placeorder", to: "orders#create"
-      resources :orders, only: [:index, :show]   # мои заказы и один мой заказ
+      resources :orders, only: [ :index, :show ]   # мои заказы и один мой заказ
 
       # Админка — только для пользователей с ролью ADMIN
       namespace :admin do

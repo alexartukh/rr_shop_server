@@ -9,7 +9,7 @@ module Api
       #   DELETE /api/v1/admin/items/:id   — удалить
       # Тело для POST/PATCH: { "item": { "name": "...", "description": "...", "price": 9.90 } }
       class ItemsController < BaseController
-        before_action :set_item, only: [:show, :update, :destroy]
+        before_action :set_item, only: [ :show, :update, :destroy ]
 
         def index
           render json: Item.order(:id)
@@ -32,7 +32,7 @@ module Api
         def update
           attrs = item_params
           if attrs.empty?
-            return render json: { errors: ["Nothing to update: send name, description and/or price"] },
+            return render json: { errors: [ "Nothing to update: send name, description and/or price" ] },
                           status: :unprocessable_content
           end
 

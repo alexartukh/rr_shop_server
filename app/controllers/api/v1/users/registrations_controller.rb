@@ -12,7 +12,7 @@ module Api
         # По умолчанию Devise принимает только email, password, password_confirmation.
         # Разрешаем имя и фамилию. role НЕ разрешаем: роль всегда USER по умолчанию.
         def configure_sign_up_params
-          devise_parameter_sanitizer.permit(:sign_up, keys: [:first_name, :last_name])
+          devise_parameter_sanitizer.permit(:sign_up, keys: [ :first_name, :last_name ])
         end
 
         def respond_with(resource, _opts = {})

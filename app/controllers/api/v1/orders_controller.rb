@@ -105,7 +105,6 @@ module Api
       def render_error(message, status = :unprocessable_content)
         render json: { error: message }, status: status
       end
-
     end # OrdersController
   end # module V1
 end # module Api

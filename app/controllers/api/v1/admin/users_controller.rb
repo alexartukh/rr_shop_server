@@ -13,7 +13,7 @@ module Api
       # Тело для PATCH (любые из полей):
       #   { "user": { "first_name": "...", "last_name": "...", "email": "...", "role": "ADMIN" } }
       class UsersController < BaseController
-        before_action :set_user, only: [:show, :update, :destroy]
+        before_action :set_user, only: [ :show, :update, :destroy ]
 
         def index
           render json: User.order(:id).map { |user| admin_user_json(user) }
@@ -38,13 +38,13 @@ module Api
         def update
           attrs = update_params
           if attrs.empty?
-            return render json: { errors: ["Nothing to update: send first_name, last_name, email and/or role"] },
+            return render json: { errors: [ "Nothing to update: send first_name, last_name, email and/or role" ] },
                           status: :unprocessable_content
           end
 
           # Защита от случайной потери доступа: админ не может снять роль ADMIN сам с себя
           if @user == current_user && attrs.key?(:role) && attrs[:role] != User::ROLE_ADMIN
-            return render json: { errors: ["You cannot remove your own admin role"] },
+            return render json: { errors: [ "You cannot remove your own admin role" ] },
                           status: :unprocessable_content
           end
 
@@ -57,7 +57,7 @@ module Api
 
         def destroy
           if @user == current_user
-            return render json: { errors: ["You cannot delete yourself"] }, status: :unprocessable_content
+            return render json: { errors: [ "You cannot delete yourself" ] }, status: :unprocessable_content
           end
 
           @user.destroy!
@@ -76,12 +76,20 @@ module Api
 
         # При создании пароль обязателен (проверяет Devise: минимум 6 символов)
         def create_params
-          params.fetch(:user, {}).permit(:email, :password, :first_name, :last_name, :role)
+          params.fetch(:user, {}).permit(:email, :password, :first_name, :last_name).merge(role_param)
         end
 
         # При редактировании пароль не меняется
         def update_params
-          params.fetch(:user, {}).permit(:first_name, :last_name, :email, :role)
+          params.fetch(:user, {}).permit(:first_name, :last_name, :email).merge(role_param)
+        end
+
+        # Роль — права доступа, поэтому она не идёт через общий permit, а берётся отдельно и явно.
+        # Допустимые значения (ADMIN/USER) проверяет модель: validates :role, inclusion: { in: ROLES }.
+        # Весь контроллер доступен только админу (BaseController#require_admin!).
+        def role_param
+          role = params.dig(:user, :role)
+          role.nil? ? {} : { role: role.to_s }
         end
 
         # Админу дополнительно показываем даты и число заказов

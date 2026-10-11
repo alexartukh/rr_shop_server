@@ -11,7 +11,7 @@ class User < ApplicationRecord
 
   ROLE_ADMIN = "ADMIN".freeze
   ROLE_USER  = "USER".freeze
-  ROLES = [ROLE_ADMIN, ROLE_USER].freeze
+  ROLES = [ ROLE_ADMIN, ROLE_USER ].freeze
 
   has_many :orders
 
