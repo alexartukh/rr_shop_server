@@ -17,6 +17,9 @@ Rails.application.config.middleware.insert_before 0, Rack::Cors do
 
     resource "/api/*",
       headers: :any,
+      # JWT-токен приходит в заголовке ответа Authorization.
+      # Без expose браузер не даст JS прочитать этот заголовок.
+      expose: ["Authorization"],
       methods: [:get, :post, :put, :patch, :delete, :options, :head]
   end
 end

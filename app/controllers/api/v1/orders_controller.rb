@@ -1,20 +1,36 @@
 module Api
   module V1
     class OrdersController < ApplicationController
+      # Все действия — только для вошедших. Пользователь определяется по
+      # JWT-токену из заголовка Authorization (current_user). Без токена — 401.
+      before_action :authenticate_user!
+
+      # GET /api/v1/orders
+      # Список заказов текущего пользователя, новые сверху.
+      def index
+        orders = current_user.orders.includes(:lines).order(created_at: :desc)
+
+        render json: orders.map { |order| order_summary_json(order) }
+      end
+
+      # GET /api/v1/orders/:id
+      # Один заказ с позициями. Ищем только среди заказов текущего пользователя,
+      # поэтому чужой заказ по его id не получить.
+      def show
+        order = current_user.orders.includes(lines: :item).find_by(id: params[:id])
+        return render_error("Order not found", :not_found) unless order
+
+        render json: order_json(order)
+      end
+
       # POST /api/v1/placeorder
       #
       # Тело запроса (JSON):
       #   {
-      #     "user_id": 2,
       #     "items": [ { "item_id": 1, "quantity": 2 }, { "item_id": 3, "quantity": 1 } ]
       #   }
-      #
-      # ВРЕМЕННО: user_id передаёт клиент. Когда появится авторизация,
-      # пользователь будет определяться по токену, а не браться из запроса.
+      # Заказ оформляется на текущего пользователя (из токена).
       def create
-        user = User.find_by(id: params[:user_id])
-        return render_error("User not found", :not_found) unless user
-
         quantities = parse_quantities(params[:items])
         return render_error("Items must be a non-empty list of { item_id, quantity > 0 }") unless quantities
 
@@ -27,14 +43,14 @@ module Api
 
         # Заказ и все его позиции создаются вместе: либо всё, либо ничего
         order = Order.transaction do
-          new_order = Order.create!(user: user, amount: amount)
+          new_order = Order.create!(user: current_user, amount: amount)
           quantities.each do |item_id, qty|
             new_order.lines.create!(item: items[item_id], quantity: qty)
           end
           new_order
         end
 
-        render json: order_json(order, items), status: :created
+        render json: order_json(order), status: :created
       rescue ActiveRecord::RecordInvalid => e
         render_error(e.message)
       end
@@ -58,22 +74,38 @@ module Api
         end
       end
 
-      def order_json(order, items)
+      # Краткие данные заказа — для списка
+      def order_summary_json(order)
+        {
+          id: order.id,
+          amount: order.amount,
+          created_at: order.created_at,
+          items_count: order.lines.map(&:quantity).sum
+        }
+      end
+
+      # Полные данные заказа — с позициями
+      def order_json(order)
         {
           id: order.id,
           user_id: order.user_id,
           amount: order.amount,
           created_at: order.created_at,
           items: order.lines.map do |line|
-            item = items[line.item_id]
-            { item_id: item.id, name: item.name, price: item.price, quantity: line.quantity }
+            {
+              item_id: line.item_id,
+              name: line.item.name,
+              price: line.item.price,
+              quantity: line.quantity
+            }
           end
         }
       end
 
-      def render_error(message, status = :unprocessable_entity)
+      def render_error(message, status = :unprocessable_content)
         render json: { error: message }, status: status
       end
-    end
-  end
-end
+
+    end # OrdersController
+  end # module V1
+end # module Api

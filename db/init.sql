@@ -1,12 +1,14 @@
 -- =====================================================================
 --  Инициализация БД интернет-магазина (PostgreSQL)
+--  Таблица users совместима с Devise + devise-jwt.
 --  Запуск:  psql -d shop_api_development -f db/init.sql
 --  Скрипт можно запускать повторно: он удаляет и заново создаёт таблицы.
 -- =====================================================================
 
 BEGIN;
 
--- Расширение для bcrypt-хэшей паролей тестовых пользователей
+-- pgcrypto: bcrypt-хэши паролей тестовых пользователей (crypt/gen_salt)
+-- и генерация jti для JWT (gen_random_uuid)
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
 DROP TABLE IF EXISTS orders_description;
@@ -22,15 +24,19 @@ CREATE TABLE users (
     first_name      VARCHAR(100)  NOT NULL,
     last_name       VARCHAR(100)  NOT NULL,
     email           VARCHAR(255)  NOT NULL,
-    password_digest VARCHAR(255)  NOT NULL,             -- bcrypt-хэш, не сам пароль
+    encrypted_password VARCHAR(255) NOT NULL DEFAULT '', -- bcrypt-хэш пароля (имя колонки ждёт Devise)
     role            VARCHAR(10)   NOT NULL DEFAULT 'USER'
                     CHECK (role IN ('ADMIN', 'USER')),
+    -- Идентификатор для отзыва JWT-токенов (devise-jwt, стратегия JTIMatcher).
+    -- При выходе он меняется, и все выданные ранее токены перестают действовать.
+    jti             VARCHAR(255)  NOT NULL DEFAULT gen_random_uuid()::text,
     created_at      TIMESTAMP(6)  NOT NULL DEFAULT now(),
     updated_at      TIMESTAMP(6)  NOT NULL DEFAULT now()
 );
 
 -- email уникален без учёта регистра
 CREATE UNIQUE INDEX index_users_on_lower_email ON users (LOWER(email));
+CREATE UNIQUE INDEX index_users_on_jti ON users (jti);
 
 -- ---------------------------------------------------------------------
 -- 2. Товары
@@ -77,39 +83,22 @@ CREATE INDEX index_orders_description_on_item_id ON orders_description (item_id)
 
 -- =====================================================================
 --  Тестовые данные
---  Пароли: admin@shop.test / admin123,  user@shop.test / user123
 -- =====================================================================
 
-INSERT INTO users (first_name, last_name, email, password_digest, role) VALUES
-    ('Admin', 'Adminov', 'admin@shop.test', crypt('admin123', gen_salt('bf', 12)), 'ADMIN'),
-    ('Ivan',  'Petrov',  'user@shop.test',  crypt('user123',  gen_salt('bf', 12)), 'USER');
+INSERT INTO users (first_name, last_name, email, encrypted_password, role) VALUES
+    ('Alex', 'Artukh', 'alex@example.com', crypt('123', gen_salt('bf', 12)), 'ADMIN'),
+    ('Test',  'Test',  'test@example.com',  crypt('123',  gen_salt('bf', 12)), 'USER'),
+    ('Denis', 'Bushtruk', 'denis@example.com',  crypt('123',  gen_salt('bf', 12)), 'USER')
+;
 
 INSERT INTO items (name, description, price) VALUES
-    ('Кофе Арабика 1 кг',      'Зерновой кофе, средняя обжарка',          24.90),
-    ('Чай зелёный Сенча',      'Японский зелёный чай, 100 г',             8.50),
-    ('Френч-пресс 600 мл',     'Стекло и нержавеющая сталь',              19.00),
-    ('Кружка керамическая',    'Объём 350 мл, белая',                     6.20),
-    ('Кофемолка ручная',       'Керамические жернова, регулировка помола', 34.00);
-
--- Заказ пользователя user@shop.test: 2 × кофе + 1 × френч-пресс
-INSERT INTO orders (user_id, amount)
-SELECT id, 0 FROM users WHERE email = 'user@shop.test';
-
-INSERT INTO orders_description (order_id, item_id, quantity)
-SELECT o.id, i.id, v.qty
-FROM (SELECT MAX(id) AS id FROM orders) o
-CROSS JOIN (VALUES ('Кофе Арабика 1 кг', 2), ('Френч-пресс 600 мл', 1)) AS v(name, qty)
-JOIN items i ON i.name = v.name;
-
--- Сумма заказа = сумма (цена × количество) по позициям
-UPDATE orders o
-SET amount = s.total
-FROM (
-    SELECT od.order_id, SUM(i.price * od.quantity) AS total
-    FROM orders_description od
-    JOIN items i ON i.id = od.item_id
-    GROUP BY od.order_id
-) s
-WHERE s.order_id = o.id;
+    ('Raspberry Pi 5', 'Powered by a 2.4 GHz quad-core Arm Cortex-A76 CPU ', 64.95),
+    ('Raspberry Pi Camera Module 3', 'Raspberry Pi’s classic compact camera', 29.95),
+    ('Raspberry Pi 5 Bumper Case', 'The Raspberry Pi Bumper is a one-piece silicone cover that snaps securely around the edges and underside of the board, guarding it against bumps, scratches, and slipping—without adding unnecessary bulk.', 3.95),
+    ('Raspberry Pi 45W USB-C Power Supply', 'When your project needs more juice, step up to the Raspberry Pi 45W USB-C Power Supply.', 14.20),
+    ('Raspberry Pi SSD', 'Boost your Raspberry Pi 5 to desktop-class performance.', 43.00),
+    ('Raspberry Pi 5 Active Cooler', 'The Raspberry Pi Active Cooler is the official clip-on cooling upgrade built specifically for the Raspberry Pi 5.', 7.00),
+    ('Raspberry Pi Display Cable Standard - Mini', 'Hook up your display with confidence.', 2.00)
+;
 
 COMMIT;
