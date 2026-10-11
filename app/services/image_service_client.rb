@@ -31,7 +31,8 @@ class ImageServiceClient
   end
 
   def initialize(url:, login:, password:, open_timeout: 5, read_timeout: 20)
-    @base_uri = URI(url.to_s.chomp("/"))
+    # Пустой адрес = сервис не настроен (например, на хостинге без IMAGE_SERVICE_URL)
+    @base_uri = url.to_s.strip.empty? ? nil : URI(url.to_s.chomp("/"))
     @login = login.to_s
     @password = password.to_s
     @open_timeout = open_timeout
@@ -41,6 +42,8 @@ class ImageServiceClient
   end
 
   def fetch_image(text:, template:)
+    raise Error, "Image service is not configured (IMAGE_SERVICE_URL is empty)" unless @base_uri
+
     token = current_token
     response = request_image(text, template, token)
 
