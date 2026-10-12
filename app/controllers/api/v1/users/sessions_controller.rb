@@ -21,6 +21,13 @@ module Api
 
           respond_to_on_destroy(non_navigational_status: :unauthorized)
         end
+
+        # Ответ на выход. Devise строит его через respond_to (выбор между HTML-редиректом
+        # и пустым ответом), а в API-контроллерах Rails метода respond_to нет — был NoMethodError.
+        # Нам редирект не нужен: просто пустой ответ (204 после выхода, 401 — если не были вошедшим).
+        def respond_to_on_destroy(non_navigational_status: :no_content)
+          head non_navigational_status
+        end
       end
     end
   end
